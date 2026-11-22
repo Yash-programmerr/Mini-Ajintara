@@ -23,7 +23,7 @@ const envSchema = z.object({
       .min(32, 'JWT_SECRET must be at least 32 characters'),
   ),
   AUTH_RATE_LIMIT_MAX: emptyAsUnset(z.coerce.number().int().positive().default(10)),
-  JWT_EXPIRES_IN: emptyAsUnset(z.string().min(1).default('7d')),
+  JWT_EXPIRES_IN: emptyAsUnset(z.string().min(1).default('15m')),
   FRONTEND_URL: emptyAsUnset(z.string().min(1).default('http://localhost:5173')),
   HOLD_MINUTES: emptyAsUnset(z.coerce.number().int().positive().default(10)),
   // Payment keys stay optional until A3 so the foundation can boot without them.

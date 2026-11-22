@@ -103,9 +103,9 @@ describe.skipIf(!process.env.TEST_REPLICA_URI)('authentication and roles', () =>
 
   it.each([
     ['garbage', 'garbage'],
-    ['expired', jwt.sign({ sub: 'test' }, secret, { expiresIn: -1 })],
-    ['wrong signature', jwt.sign({ sub: 'test' }, randomUUID())],
-    ['unsigned', jwt.sign({ sub: 'test' }, null, { algorithm: 'none' })],
+    ['expired', jwt.sign({ sub: '000000000000000000000001' }, secret, { expiresIn: -1 })],
+    ['wrong signature', jwt.sign({ sub: '000000000000000000000001' }, randomUUID())],
+    ['unsigned', jwt.sign({ sub: '000000000000000000000001' }, null, { algorithm: 'none' })],
   ])('rejects a %s token', async (_label, token) => {
     const result = await get('auth/me', token);
     expect(result.status).toBe(401);

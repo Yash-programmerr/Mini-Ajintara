@@ -2,11 +2,15 @@ import app from './app.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 
+import User from './models/User.js';
+
 let server;
 let shuttingDown = false;
 
 async function start() {
   await connectDB();
+  // The first signups also need the unique email index to serialize duplicates.
+  await User.init();
 
   server = app.listen(env.PORT, () => {
     console.log(`[server] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
