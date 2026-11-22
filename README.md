@@ -3,14 +3,13 @@
 > **Video walkthrough:** TODO — add link
 
 An online hotel listing and booking platform for India with three roles: guest,
-partner (hotel owner), and admin. Authentication and role-based access are implemented. Other feature routes are placeholders.
+partner (hotel owner), and admin. Partners can submit listings, configure rooms and edit nightly inventory. Admins can review those listings.
 
 ## Overview
 
-- Guests search approved hotels by city and date, hold a room, pay, and manage
-  bookings.
+- Guest search, booking and payment are planned.
 - Partners manage properties, room types, and date-wise inventory.
-- Admins approve properties, manage users, and view a dashboard.
+- Admins approve or reject pending properties. Booking, user and statistics screens are planned for A6.
 - Money is integer paise, GST is basis points, and calendar dates are IST
   `YYYY-MM-DD` strings.
 
@@ -56,7 +55,7 @@ npm run dev            # http://localhost:5173
 
 ```bash
 cd backend && npm run lint && npm test
-cd frontend && npm run lint && npm run build
+cd frontend && npm run lint && npm test && npm run build
 ```
 
 ## Environment variables
@@ -72,6 +71,7 @@ cd frontend && npm run lint && npm run build
 | `JWT_EXPIRES_IN`           | no       | Defaults to `15m`.                                    |
 | `AUTH_RATE_LIMIT_MAX`      | no       | Signup and login share 10 attempts per IP per 15 minutes by default. |
 | `FRONTEND_URL`             | no       | Comma-separated CORS origins.                        |
+| `SEED_PASSWORD`            | no       | Overrides the demo password when creating seed accounts. |
 | `HOLD_MINUTES`             | no       | Defaults to `10`.                                    |
 | `RAZORPAY_KEY_ID`          | no       | Required before A3 payment work.                     |
 | `RAZORPAY_KEY_SECRET`      | no       | Required before A3 payment work.                     |
@@ -79,9 +79,9 @@ cd frontend && npm run lint && npm run build
 
 ### Frontend
 
-`VITE_API_URL` is required. `VITE_CLOUDINARY_CLOUD_NAME`,
-`VITE_CLOUDINARY_UPLOAD_PRESET`, and `VITE_RAZORPAY_KEY_ID` are placeholders for
-later features.
+Set `VITE_API_URL` to the backend API. Set both `VITE_CLOUDINARY_CLOUD_NAME` and
+`VITE_CLOUDINARY_UPLOAD_PRESET` to enable unsigned photo uploads. Partners can also
+paste HTTPS image URLs. `VITE_RAZORPAY_KEY_ID` is reserved for payment work.
 
 Never commit `.env` files.
 
@@ -111,12 +111,35 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the Mermaid diagram
 
 ## Database design
 
-See [docs/DATA_MODEL.md](docs/DATA_MODEL.md). The `users` collection is implemented. Planned collections include
-`properties`, `roomTypes`, `inventory`, `bookings`, `payments`.
+The database stores users, properties, room types and nightly inventory. Field definitions and indexes are in the [data model](docs/DATA_MODEL.md).
 
 ## API list
 
-See [docs/API.md](docs/API.md). Signup, login, and the current-user endpoint are live alongside `GET /api/health`, which returns `{ status: "ok", time }`.
+Partner management, admin review, authentication and health endpoints are implemented. See the [API reference](docs/API.md).
+
+## Inventory design (A2)
+
+Each room type has one inventory document per IST night. The unique room-type/date index gives a future booking transaction a single document per night on which to reserve capacity atomically. Creating a room type also creates its first 365 nights, starting today in Asia/Kolkata, in the same transaction.
+
+The server fills the window at startup and at 00:05 Asia/Kolkata each day. Newly generated nights take their price and total rooms from the room type’s base values. Partners edit inclusive ranges through the inventory endpoint. They can change price, capacity or both. If any night is missing or already has more bookings than the proposed capacity, the entire range update rolls back and the API identifies up to ten conflicting nights.
+
+Prices are per room per night, in integer paise, capped at ₹1,00,000. At 20,000 properties averaging five room types each, the active window alone takes about 36.5 million documents. Historical nights add storage beyond that. At that scale, consider sparse nightly overrides against base values or per-month documents.
+
+Editing an approved property keeps its approval. Editing a rejected property clears the reason and sends it back to the pending queue.
+
+## Seed data and test logins
+
+Run `npm run seed:data` from `backend` against a local replica set. The command prints the host, database name, counts and account emails. For a remote target, pass `-- --yes`. To rebuild the two demo partners’ listings, room types and inventory, pass `-- --reset`. Existing accounts keep their credentials. Use `npm run seed:admin` separately to create the admin.
+
+| Role | Email |
+| --- | --- |
+| Guest | `guest@ajintara.test` |
+| Partner, 8 properties | `partner1@ajintara.test` |
+| Partner, 6 properties | `partner2@ajintara.test` |
+
+**Demo only** — the default password is `Demo@12345`. Set `SEED_PASSWORD` before the first run to choose another password.
+
+The catalog has 14 properties in Goa, Jaipur, Mumbai and Manali. Approved properties have a 15% Friday/Saturday premium for the next 60 nights. From December 24 through January 1 inclusive, the 40% holiday premium takes precedence within the bookable window. Seeded overrides round to whole rupees. The Last Room Suite has one room and a base price of exactly ₹7,500.
 
 ## Double-booking prevention (A4)
 
@@ -151,11 +174,5 @@ Refunds use the grand total including GST, multiplied by the applicable percenta
 ## Foundation verification
 
 Install dependencies in both packages, then run `npm test` in the backend for HTTP checks and shared backend and frontend helper tests.
-Set `TEST_REPLICA_URI` to a dedicated test replica-set database to include the auth and transaction checks. They create and remove a unique auth
-test database and a transaction probe collection.
+Set `TEST_REPLICA_URI` to a dedicated local test replica-set URI to include authentication, ownership, review, inventory, rollback and seed checks. The integration suites clean up their disposable databases or probe collections. Run with `TZ=UTC` and `TZ=America/New_York`.
 Server startup requires a successful replica-set topology check before listening.
-
-## Feature status
-
-- Partner and admin routes enforce database roles and return `501 NOT_IMPLEMENTED` after authorization. Other hotel features are planned.
-- The frontend lockfile resolves Vite 8.3.8.

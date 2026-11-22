@@ -1,7 +1,6 @@
-# Data model (planning only)
+# Data model
 
-No Mongoose schemas exist yet. This document describes the intended
-collections and indexes so feature work stays consistent.
+Users, properties, room types and inventory have Mongoose schemas. The booking and payment sections describe planned collections. All collections have MongoDB’s default unique `_id` index in addition to the indexes listed below.
 
 All money is stored as integer paise. All GST rates are basis points. Calendar
 dates are `'YYYY-MM-DD'` strings for IST; instants are UTC `Date` values.
@@ -19,7 +18,7 @@ dates are `'YYYY-MM-DD'` strings for IST; instants are UTC `Date` values.
 | `createdAt`    | Date                                          | timestamps                          |
 | `updatedAt`    | Date                                          | timestamps                          |
 
-Indexes: `{ email: 1 }` unique; `{ role: 1, isBlocked: 1 }`.
+Email has a unique `{ email: 1 }` index.
 
 ## `properties`
 
@@ -39,44 +38,40 @@ Indexes: `{ email: 1 }` unique; `{ role: 1, isBlocked: 1 }`.
 | `createdAt`    | Date                                         | timestamps                                 |
 | `updatedAt`    | Date                                         | timestamps                                 |
 
-Indexes: `{ partnerId: 1, createdAt: -1 }`; `{ status: 1, cityKey: 1 }`;
-text index on `{ name, city, description }`.
+Indexes are `{ partnerId: 1 }` and `{ cityKey: 1, status: 1 }`.
 
-## `roomTypes`
+## `roomtypes` (RoomType)
 
 | Field            | Type      | Notes                              |
 | ---------------- | --------- | ---------------------------------- |
 | `_id`            | ObjectId  |                                    |
 | `propertyId`     | ObjectId  | ref `properties`, required         |
 | `name`           | string    | e.g. Deluxe Room                   |
-| `basePricePaise` | integer   | >= 0, per room per night           |
+| `basePricePaise` | integer   | 100–10,000,000 paise per room per night           |
 | `totalRooms`     | integer   | >= 1                               |
 | `maxGuests`      | integer   | >= 1                               |
 | `createdAt`      | Date      | timestamps                         |
 | `updatedAt`      | Date      | timestamps                         |
 
-Indexes: `{ propertyId: 1, name: 1 }` unique; `{ propertyId: 1 }`.
+The property lookup index is `{ propertyId: 1 }`.
 
-## `inventory`
+## `inventories` (Inventory)
 
 | Field        | Type     | Notes                                      |
 | ------------ | -------- | ------------------------------------------ |
 | `_id`        | ObjectId |                                            |
-| `roomTypeId` | ObjectId | ref `roomTypes`, required                  |
+| `roomTypeId` | ObjectId | ref `roomtypes`, required                  |
 | `propertyId` | ObjectId | ref `properties`, required                 |
 | `date`       | string   | `'YYYY-MM-DD'` IST calendar night          |
-| `pricePaise` | integer  | >= 0, nightly override                     |
+| `pricePaise` | integer  | 100–10,000,000 paise per night                     |
 | `totalRooms` | integer  | >= 1                                       |
 | `booked`     | integer  | default 0                                  |
-| `createdAt`  | Date     | timestamps                                 |
-| `updatedAt`  | Date     | timestamps                                 |
 
 Indexes: `{ roomTypeId: 1, date: 1 }` unique; `{ propertyId: 1, date: 1 }`.
 
-Invariant: `0 <= booked <= totalRooms`, enforced by conditional atomic updates
-(`$inc` with `booked: { $lte: totalRooms - qty }`) inside a transaction.
+Capacity edits preserve `0 <= booked <= totalRooms` by matching only nights with `booked <= proposed totalRooms`. A transaction rolls back the entire range if fewer nights match than requested.
 
-## `bookings`
+## `bookings` (planned)
 
 | Field                | Type                                                                 | Notes                                          |
 | -------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
@@ -108,7 +103,7 @@ Indexes: `{ guestId: 1, createdAt: -1 }`; `{ partnerId: 1, createdAt: -1 }`;
 `{ status: 1, holdExpiresAt: 1 }` for the expiry cron;
 `{ idempotencyKey: 1 }` unique sparse; `{ roomTypeId: 1, checkInDate: 1, checkOutDate: 1 }`.
 
-## `payments`
+## `payments` (planned)
 
 | Field              | Type                                                   | Notes                                  |
 | ------------------ | ------------------------------------------------------ | -------------------------------------- |
@@ -129,5 +124,4 @@ Indexes: `{ bookingId: 1 }`; `{ gatewayOrderId: 1 }` unique;
 - `priceBreakdown` and guest details are snapshots: later property price changes
   must not alter an existing booking.
 - Booking transitions are conditional updates on the expected current status.
-- Inventory rows are created for a date range when a partner sets availability;
-  missing rows mean "not bookable", not "unlimited".
+- Each new room type starts with 365 nights. Startup and the daily extension job append missing nights at the end of the window using the room type’s base price and room count. A missing night has no bookable inventory.
