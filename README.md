@@ -127,11 +127,17 @@ read-then-write logic. This is not implemented yet.
 
 ## Time zone handling (A5)
 
-Planned: `utils/time.js` is the only place that derives "today" or converts IST
-calendar dates. Calendar nights are `YYYY-MM-DD` strings; instants are UTC
-`Date`. The API accepts date-only strings from clients, never ISO timestamps.
-Tests must pass under both `TZ=UTC` and `TZ=America/New_York`. The helper is a
-placeholder for now.
+- **Calendar nights** use IST `YYYY-MM-DD` strings. A night identifies the same hotel date wherever the guest opens the app. Checkout is exclusive. The frontend serializes the local date-picker selection with `toDateString()` and displays the string using UTC calendar parts.
+- **UTC instants** represent a specific moment, such as `checkInAt` or `checkOutAt`. The frontend displays these in Asia/Kolkata with an IST label.
+- **Wall-clock rules** live in `config/booking.js`. The stay builder combines the arrival date with 14:00 IST and the departure date with 12:00 IST, then returns each as a UTC `Date`.
+
+Never derive today from the server clock’s local calendar. Pass the current instant to `todayIST(now)` on the backend and use the same IST day for the frontend date-picker minimum. Same-day check-in is allowed, and a stay can span 1 through 30 nights.
+
+### Pricing and refund assumptions
+
+Each night uses the first GST slab covering its per-room price. Multiply that price by the room quantity, calculate GST for the night, and round half up to the nearest paisa before summing the nights.
+
+Refunds use the grand total including GST, multiplied by the applicable percentage and rounded down to whole paise. More than 48 hours before check-in gives 100%. From exactly 48 hours through exactly 24 hours, both endpoints included, the refund is 50%. With less than 24 hours remaining the refund is zero. Cancellation closes at the check-in instant.
 
 ## Part B tasks done (B3, B7)
 
@@ -144,7 +150,7 @@ placeholder for now.
 
 ## Foundation verification
 
-Run `npm test` in the backend to exercise HTTP behavior and money formatting.
+Install dependencies in both packages, then run `npm test` in the backend for HTTP checks and shared backend and frontend helper tests.
 Set `TEST_REPLICA_URI` to a dedicated test replica-set database to include the auth and transaction checks. They create and remove a unique auth
 test database and a transaction probe collection.
 Server startup requires a successful replica-set topology check before listening.
@@ -152,6 +158,4 @@ Server startup requires a successful replica-set topology check before listening
 ## Feature status
 
 - Partner and admin routes enforce database roles and return `501 NOT_IMPLEMENTED` after authorization. Other hotel features are planned.
-- The configured refund policy gives 100% at exactly 48 hours before check-in.
-  Refund calculation and its boundary tests belong to the refund milestone.
 - The frontend lockfile resolves Vite 8.3.8.
