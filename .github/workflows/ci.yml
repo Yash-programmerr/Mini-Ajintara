@@ -33,6 +33,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Install dependencies for shared frontend date tests
+        working-directory: frontend
+        run: npm ci
+
       - name: Start disposable MongoDB replica set
         run: |
           docker run -d --name mongo-test -p 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
