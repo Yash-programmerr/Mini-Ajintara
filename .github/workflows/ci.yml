@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend and shared tests (${{ matrix.timezone }})
+    strategy:
+      matrix:
+        timezone: [UTC, America/New_York]
+    env:
+      TZ: ${{ matrix.timezone }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Start disposable MongoDB replica set
+        run: |
+          docker run -d --name mongo-test -p 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          timeout 60 bash -c 'until docker exec mongo-test mongosh --quiet --eval "db.adminCommand({ping:1})"; do sleep 1; done'
+          docker exec mongo-test mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+
+          timeout 60 bash -c 'until docker exec mongo-test mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; do sleep 1; done'
+
+      - name: Test
+        env:
+          TEST_REPLICA_URI: mongodb://127.0.0.1:27017/ajintara_test?replicaSet=rs0&directConnection=true
+        run: npm test
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
