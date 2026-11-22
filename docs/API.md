@@ -1,13 +1,12 @@
-# API (planned)
+# API
 
-Everything below is **planned** and not implemented yet. The only live endpoint
-today is `GET /api/health`.
+The health check and authentication endpoints are live.
 
 | Method | Path                                        | Access        | Description                                  | Status  |
 | ------ | ------------------------------------------- | ------------- | -------------------------------------------- | ------- |
-| POST   | `/api/auth/signup`                          | Public        | Create a guest account                       | planned |
-| POST   | `/api/auth/login`                           | Public        | Email/password login, returns JWT            | planned |
-| GET    | `/api/auth/me`                              | Authenticated | Current user profile                         | planned |
+| POST   | `/api/auth/signup`                          | Public        | Create a guest or partner account                       | implemented |
+| POST   | `/api/auth/login`                           | Public        | Email/password login, returns JWT            | implemented |
+| GET    | `/api/auth/me`                              | Authenticated | Current user profile                         | implemented |
 | GET    | `/api/properties`                           | Public        | Search approved properties by city/dates     | planned |
 | GET    | `/api/properties/:id`                       | Public        | Property details with room types             | planned |
 | GET    | `/api/properties/:id/availability`          | Public        | Nightly availability and prices              | planned |
@@ -34,3 +33,45 @@ today is `GET /api/health`.
 | GET    | `/api/admin/users`                          | Admin         | List users                                   | planned |
 | PATCH  | `/api/admin/users/:id/block`                | Admin         | Block or unblock a user                      | planned |
 | GET    | `/api/admin/bookings`                       | Admin         | List all bookings                            | planned |
+
+## Authentication examples
+
+Send JSON bodies with `Content-Type: application/json`. Signup and login share
+the per-IP attempt limit. Excess attempts receive `429 RATE_LIMITED`.
+
+### POST /api/auth/signup
+
+```json
+{"name":"Yash","email":"yash@example.com","password":"<your-password>","role":"guest"}
+```
+
+Role defaults to `guest` and also accepts `partner`. A successful request returns HTTP 201.
+
+```json
+{"token":"<JWT>","user":{"id":"67aa12345678901234567890","name":"Yash","email":"yash@example.com","role":"guest","isBlocked":false,"createdAt":"2026-01-01T12:00:00.000Z","updatedAt":"2026-01-01T12:00:00.000Z"}}
+```
+
+### POST /api/auth/login
+
+```json
+{"email":"yash@example.com","password":"<your-password>"}
+```
+
+A successful request returns HTTP 200.
+
+```json
+{"token":"<JWT>","user":{"id":"67aa12345678901234567890","name":"Yash","email":"yash@example.com","role":"guest","isBlocked":false,"createdAt":"2026-01-01T12:00:00.000Z","updatedAt":"2026-01-01T12:00:00.000Z"}}
+```
+
+### GET /api/auth/me
+
+```http
+GET /api/auth/me HTTP/1.1
+Authorization: Bearer <JWT>
+```
+
+A successful request returns HTTP 200.
+
+```json
+{"user":{"id":"67aa12345678901234567890","name":"Yash","email":"yash@example.com","role":"guest","isBlocked":false,"createdAt":"2026-01-01T12:00:00.000Z","updatedAt":"2026-01-01T12:00:00.000Z"}}
+```

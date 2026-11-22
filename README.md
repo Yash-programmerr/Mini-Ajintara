@@ -3,9 +3,7 @@
 > **Video walkthrough:** TODO — add link
 
 An online hotel listing and booking platform for India with three roles: guest,
-partner (hotel owner), and admin. This repository currently contains the
-foundation only. Feature logic (auth, search, booking, payments, refunds) is
-intentionally not implemented yet; feature routes return `501`.
+partner (hotel owner), and admin. Authentication and role-based access are implemented. Other feature routes are placeholders.
 
 ## Overview
 
@@ -28,7 +26,7 @@ intentionally not implemented yet; feature routes return `501`.
 | Payments  | Razorpay (test mode)                                          | Required gateway; raw-body webhook verification is planned.         |
 | Frontend  | Vite + React (JS), Tailwind CSS v4, React Router              | Fast dev loop; utility CSS keeps the mobile-first UI consistent.    |
 | Data      | TanStack Query, Axios, React Hook Form + Zod, date-fns        | Cache server state, schema-validated forms, and IST-aware dates.    |
-| Tests     | Vitest, Supertest                                             | Fast unit tests and HTTP-level checks without a database.           |
+| Tests     | Vitest, Supertest                                             | Fast unit tests and HTTP-level checks against a disposable replica set.           |
 
 ## Run locally
 
@@ -71,7 +69,8 @@ cd frontend && npm run lint && npm run build
 | `NODE_ENV`                 | no       | `development`, `test`, or `production`.              |
 | `MONGO_URI`                | yes      | Atlas replica-set connection string.                 |
 | `JWT_SECRET`               | yes      | At least 32 characters; no default.                  |
-| `JWT_EXPIRES_IN`           | no       | Defaults to `7d`.                                    |
+| `JWT_EXPIRES_IN`           | no       | Defaults to `15m`.                                    |
+| `AUTH_RATE_LIMIT_MAX`      | no       | Signup and login share 10 attempts per IP per 15 minutes by default. |
 | `FRONTEND_URL`             | no       | Comma-separated CORS origins.                        |
 | `HOLD_MINUTES`             | no       | Defaults to `10`.                                    |
 | `RAZORPAY_KEY_ID`          | no       | Required before A3 payment work.                     |
@@ -86,6 +85,25 @@ later features.
 
 Never commit `.env` files.
 
+## Authentication
+
+The Vercel frontend sends a JWT in the Authorization header to the Render API.
+This keeps authentication stateless and avoids cross-site session cookies between
+the two domains. The API verifies the signature and expiry, then loads the user
+on each protected request. Blocks, deletions, and role changes take effect on the
+next request. Tokens expire after 15 minutes by default.
+
+Public signup accepts guests and hotel partners. To provision an admin, set
+`ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the backend environment
+and run `npm run seed:admin` from `backend`. Reusing an email preserves the
+existing account, including its role and password.
+
+### Known limitations
+
+The frontend stores the token in localStorage so a reload can restore the user.
+An XSS vulnerability could let injected JavaScript read and reuse that token.
+Short expiry limits that window. Logout clears the browser's copy.
+
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the Mermaid diagram
@@ -93,14 +111,12 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the Mermaid diagram
 
 ## Database design
 
-See [docs/DATA_MODEL.md](docs/DATA_MODEL.md). Planned collections: `users`,
-`properties`, `roomTypes`, `inventory`, `bookings`, `payments`. Schemas are not
-created yet.
+See [docs/DATA_MODEL.md](docs/DATA_MODEL.md). The `users` collection is implemented. Planned collections include
+`properties`, `roomTypes`, `inventory`, `bookings`, `payments`.
 
 ## API list
 
-See [docs/API.md](docs/API.md). All feature endpoints are marked planned. The
-only live endpoint is `GET /api/health`, which returns `{ status: "ok", time }`.
+See [docs/API.md](docs/API.md). Signup, login, and the current-user endpoint are live alongside `GET /api/health`, which returns `{ status: "ok", time }`.
 
 ## Double-booking prevention (A4)
 
@@ -129,14 +145,13 @@ placeholder for now.
 ## Foundation verification
 
 Run `npm test` in the backend to exercise HTTP behavior and money formatting.
-Set `TEST_REPLICA_URI` to a dedicated test replica-set database to include the
-transaction check. It creates and drops its own uniquely named probe collection.
+Set `TEST_REPLICA_URI` to a dedicated test replica-set database to include the auth and transaction checks. They create and remove a unique auth
+test database and a transaction probe collection.
 Server startup requires a successful replica-set topology check before listening.
 
 ## Feature status
 
-- Feature routes return `501 NOT_IMPLEMENTED`. Authentication, authorization,
-  schemas, inventory, booking, and payment behavior belong to upcoming milestones.
+- Partner and admin routes enforce database roles and return `501 NOT_IMPLEMENTED` after authorization. Other hotel features are planned.
 - The configured refund policy gives 100% at exactly 48 hours before check-in.
   Refund calculation and its boundary tests belong to the refund milestone.
 - The frontend lockfile resolves Vite 8.3.8.
