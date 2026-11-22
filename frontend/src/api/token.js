@@ -2,7 +2,7 @@ let memoryToken = null;
 
 export function readToken() {
   try {
-    return localStorage.getItem('token') ?? memoryToken;
+    return localStorage.getItem('token');
   } catch {
     return memoryToken;
   }

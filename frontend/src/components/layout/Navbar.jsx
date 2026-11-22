@@ -2,7 +2,7 @@ import { Building2, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 
-import { useAuth } from '../../hooks/useAuth.jsx';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const roleLinks = {
   guest: { to: '/bookings', label: 'My Bookings' },

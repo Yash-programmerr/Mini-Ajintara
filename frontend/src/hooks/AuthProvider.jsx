@@ -1,9 +1,9 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client.js';
 import { readToken, writeToken } from '../api/token.js';
 
-const AuthContext = createContext(null);
+import { AuthContext } from './useAuth.js';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -58,8 +58,4 @@ export function AuthProvider({ children }) {
     user, loading, login: (fields) => startSession('/auth/login', fields),
     signup: (fields) => startSession('/auth/signup', fields), logout,
   }}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
 }
