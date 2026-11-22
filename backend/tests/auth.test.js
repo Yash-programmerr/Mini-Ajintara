@@ -131,7 +131,7 @@ describe.skipIf(!process.env.TEST_REPLICA_URI)('authentication and roles', () =>
       }
     }
     await User.updateOne({ _id: user.id }, { role: 'partner' });
-    expect((await get('partner/properties', token)).status).toBe(501);
+    expect((await get('partner/properties', token)).status).toBe(200);
     await User.updateOne({ _id: user.id }, { role: 'admin' });
     expect((await get('admin/dashboard', token)).status).toBe(501);
   });

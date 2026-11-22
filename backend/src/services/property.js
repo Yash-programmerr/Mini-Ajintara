@@ -1,6 +1,7 @@
 import Property, { normalizeCityKey } from '../models/Property.js';
 import RoomType from '../models/RoomType.js';
 import { AppError } from '../utils/AppError.js';
+import { reviewBody } from '../validators/property.js';
 
 const missingProperty = () => new AppError(404, 'NOT_FOUND', 'Property not found');
 const missingRoomType = () => new AppError(404, 'NOT_FOUND', 'Room type not found');
@@ -52,6 +53,34 @@ export async function listOwnedProperties(partnerId) {
 export async function getOwnedProperty(id, partnerId) {
   const [property] = await withRoomTypes([await findOwnedProperty(id, partnerId)]);
   return property;
+}
+
+export async function getAdminProperty(id) {
+  const property = await Property.findById(id).populate('partnerId', 'name email');
+  if (!property) throw missingProperty();
+  const [result] = await withRoomTypes([property]);
+  return result;
+}
+
+export async function listAdminProperties({ status, page, limit }) {
+  const [items, total] = await Promise.all([
+    Property.find({ status }).sort({ createdAt: 1, _id: 1 }).skip((page - 1) * limit)
+      .limit(limit).populate('partnerId', 'name email'),
+    Property.countDocuments({ status }),
+  ]);
+  return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+}
+
+export async function reviewProperty(id, action, reason) {
+  const parsed = reviewBody.safeParse({ action, reason });
+  if (!parsed.success) throw new AppError(400, 'VALIDATION_ERROR', 'Supply a valid action and rejection reason');
+  const status = action === 'approve' ? 'approved' : 'rejected';
+  const property = await Property.findOneAndUpdate({ _id: id, status: 'pending' }, {
+    $set: { status, rejectReason: status === 'rejected' ? parsed.data.reason : null },
+  }, { returnDocument: 'after', runValidators: true });
+  if (property) return property;
+  if (!await Property.exists({ _id: id })) throw missingProperty();
+  throw new AppError(409, 'NOT_PENDING', 'This property has already been reviewed');
 }
 
 export async function updateOwnedRoomType(id, partnerId, data) {
