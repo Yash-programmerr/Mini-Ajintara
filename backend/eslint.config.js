@@ -1,3 +1,4 @@
+import { dateSlicingRule } from '../date-lint-rule.mjs';
 import js from '@eslint/js';
 import globals from 'globals';
 
@@ -12,6 +13,7 @@ export default [
       globals: { ...globals.node },
     },
     rules: {
+      'no-restricted-syntax': dateSlicingRule,
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
