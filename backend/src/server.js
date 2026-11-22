@@ -2,15 +2,21 @@ import app from './app.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 
+import { startInventoryExtendJob } from './jobs/inventoryExtend.js';
+import Inventory from './models/Inventory.js';
+import Property from './models/Property.js';
+import RoomType from './models/RoomType.js';
 import User from './models/User.js';
 
 let server;
+let inventoryJob;
 let shuttingDown = false;
 
 async function start() {
   await connectDB();
-  // The first signups also need the unique email index to serialize duplicates.
-  await User.init();
+  // Requests and overlapping extension jobs rely on the unique indexes.
+  await Promise.all([User.init(), Property.init(), RoomType.init(), Inventory.init()]);
+  inventoryJob = await startInventoryExtendJob();
 
   server = app.listen(env.PORT, () => {
     console.log(`[server] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
@@ -29,6 +35,7 @@ async function shutdown(signal) {
   }, 10000);
   forceExit.unref();
 
+  await inventoryJob?.stop();
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
