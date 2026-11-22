@@ -55,16 +55,18 @@ async function insertMissingDates(docs) {
   }
 }
 
-export async function extendInventoryWindow(now = new Date()) {
+export async function extendInventoryWindow(now = new Date(), propertyIds) {
   const today = todayIST(now);
   const end = addDays(today, INVENTORY_DAYS - 1);
+  const scope = propertyIds ? { propertyId: { $in: propertyIds } } : {};
   const latest = await Inventory.aggregate([
+    ...(propertyIds ? [{ $match: scope }] : []),
     { $sort: { roomTypeId: 1, date: 1 } },
     { $group: { _id: '$roomTypeId', date: { $last: '$date' } } },
   ]);
   const lastDate = new Map(latest.map((row) => [String(row._id), row.date]));
   let inserted = 0;
-  for await (const room of RoomType.find().lean().cursor()) {
+  for await (const room of RoomType.find(scope).lean().cursor()) {
     const last = lastDate.get(String(room._id));
     if (last >= end) continue;
     const from = last && last >= today ? addDays(last, 1) : today;

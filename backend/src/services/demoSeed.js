@@ -3,7 +3,7 @@ import Property from '../models/Property.js';
 import RoomType from '../models/RoomType.js';
 import User from '../models/User.js';
 import { signup } from './auth.js';
-import { createRoomTypeWithInventory, updateInventoryRange } from './inventory.js';
+import { createRoomTypeWithInventory, extendInventoryWindow, updateInventoryRange } from './inventory.js';
 import { createProperty, reviewProperty } from './property.js';
 import { withTransaction } from '../utils/transaction.js';
 import { signupBody } from '../validators/auth.js';
@@ -60,7 +60,13 @@ export async function seedDemoData({ password = process.env.SEED_PASSWORD || 'De
   const users = [];
   for (const account of seedAccounts) users.push(await seedAccount(account, password));
   const partnerIds = users.filter(({ role }) => role === 'partner').map(({ id }) => id);
-  if (reset) await resetPartnerListings(partnerIds);
+  if (reset) {
+    await resetPartnerListings(partnerIds);
+  } else {
+    // The CLI may run after downtime, before the server's daily extension has caught up.
+    const existing = await Property.distinct('_id', { partnerId: { $in: partnerIds } });
+    if (existing.length) await extendInventoryWindow(now, existing);
+  }
   for (const listing of demoCatalog) await seedListing(users[listing.partner].id, listing, now);
 
   const properties = await Property.find({ partnerId: { $in: partnerIds } }).select('city status');

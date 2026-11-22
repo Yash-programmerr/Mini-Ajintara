@@ -10,9 +10,11 @@ import Property from '../src/models/Property.js';
 import RoomType from '../src/models/RoomType.js';
 import User from '../src/models/User.js';
 import { signup } from '../src/services/auth.js';
+import { seedDemoData } from '../src/services/demoSeed.js';
 import { createRoomTypeWithInventory } from '../src/services/inventory.js';
 import { createProperty } from '../src/services/property.js';
 import { useDisposableReplica } from './helpers/replica.js';
+import { addDays } from '../src/utils/time.js';
 
 const scriptPath = fileURLToPath(new URL('../src/scripts/seedData.js', import.meta.url));
 const exec = promisify(execFile);
@@ -92,6 +94,11 @@ describe.skipIf(!process.env.TEST_REPLICA_URI)('demo seed CLI on a disposable re
     const { user } = await signup({ email: 'owner@example.org', name: 'Another Owner', role: 'partner', password });
     const other = await createProperty(user.id, demoCatalog[0].property);
     const room = await createRoomTypeWithInventory(other, demoCatalog[0].rooms[0], new Date('2026-11-22T04:00:00Z'));
+    const futureDate = addDays(firstNight.date, 400);
+    const future = new Date(futureDate + 'T00:00:00Z');
+    expect(await seedDemoData({ password, now: future })).toEqual(expected);
+    expect(await Inventory.countDocuments({ roomTypeId: lastRoom.id, date: { $gte: futureDate } })).toBe(365);
+    expect(await Inventory.countDocuments({ roomTypeId: room.id })).toBe(365);
     await again(['--reset']);
     expect(await Property.exists({ _id: { $in: before } })).toBeNull();
     expect(await User.exists({ _id: user.id })).toBeTruthy();
