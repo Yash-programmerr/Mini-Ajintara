@@ -2,12 +2,13 @@ import { Building2, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 
-const navLinks = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/bookings', label: 'My bookings' },
-  { to: '/login', label: 'Login' },
-];
+import { useAuth } from '../../hooks/useAuth.jsx';
 
+const roleLinks = {
+  guest: { to: '/bookings', label: 'My Bookings' },
+  partner: { to: '/partner', label: 'Partner dashboard' },
+  admin: { to: '/admin', label: 'Admin dashboard' },
+};
 const navLinkClass = ({ isActive }) =>
   `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900'
@@ -16,6 +17,25 @@ const navLinkClass = ({ isActive }) =>
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const closeMenu = () => setIsOpen(false);
+
+  const { user, loading, logout } = useAuth();
+  const links = [{ to: '/', label: 'Home', end: true }];
+  if (user) links.push(roleLinks[user.role]);
+  else if (!loading) links.push({ to: '/login', label: 'Login' }, { to: '/signup', label: 'Signup' });
+
+  const menu = <>
+    {links.map(({ to, label, end }) => (
+      <NavLink key={to} to={to} end={end} className={navLinkClass} onClick={closeMenu}>
+        {label}
+      </NavLink>
+    ))}
+    {user && <>
+      <span className="px-3 text-sm font-medium">{user.name}</span>
+      <button type="button" onClick={() => { closeMenu(); logout(); }} className="rounded-lg px-3 py-2 text-sm">
+        Logout
+      </button>
+    </>}
+  </>;
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -30,24 +50,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={navLinkClass}
-              onClick={closeMenu}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-          <NavLink
-            to="/signup"
-            onClick={closeMenu}
-            className="ml-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-          >
-            Sign up
-          </NavLink>
+          {menu}
         </nav>
 
         <button
@@ -69,24 +72,7 @@ export default function Navbar() {
           className="border-t border-slate-200 bg-white px-4 py-3 md:hidden"
         >
           <div className="flex flex-col gap-1">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={navLinkClass}
-                onClick={closeMenu}
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            <NavLink
-              to="/signup"
-              onClick={closeMenu}
-              className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-center text-sm font-medium text-white"
-            >
-              Sign up
-            </NavLink>
+            {menu}
           </div>
         </nav>
       ) : null}

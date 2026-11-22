@@ -1,3 +1,5 @@
+import AuthForm from '../components/AuthForm.jsx';
+
 export default function Signup() {
-  return <h1 className="text-3xl font-semibold tracking-tight">Signup</h1>;
+  return <AuthForm creating />;
 }
