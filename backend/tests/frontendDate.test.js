@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { formatInstantIST, formatStayDate, nightCount, todayIST, toDateString } from '../../frontend/src/lib/date.js';
+import { formatInstantIST, formatStayDate, inventoryMonth, nightCount, todayIST, toDateString } from '../../frontend/src/lib/date.js';
 
 it('displays stay dates and IST instants across browser zones', () => {
   expect(formatStayDate('2026-12-24')).toBe('24 Dec 2026');
@@ -14,4 +14,13 @@ it('uses the local date-picker selection and the IST minimum date', () => {
 
 it('counts calendar nights across the US spring DST change', () => {
   expect(nightCount('2026-03-07', '2026-03-09')).toBe(2);
+});
+
+it('clips the first and last inventory months to 365 nights across leap day', () => {
+  expect(inventoryMonth('2028-02-27', 0)).toMatchObject({
+    from: '2028-02-27', to: '2028-02-29', hasPrevious: false, hasNext: true,
+  });
+  expect(inventoryMonth('2028-02-27', 12)).toMatchObject({
+    from: '2029-02-01', to: '2029-02-25', hasPrevious: true, hasNext: false,
+  });
 });

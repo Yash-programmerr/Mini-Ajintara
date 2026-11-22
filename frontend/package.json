@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint && eslint .",
+    "test": "npm --prefix ../backend test -- tests/frontendDate.test.js tests/money.test.js tests/partnerFields.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
