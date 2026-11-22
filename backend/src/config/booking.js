@@ -13,3 +13,4 @@ export const REFUND_RULES = Object.freeze([
   Object.freeze({ minHoursBeforeCheckIn: 24, refundBps: 5000 }),
   Object.freeze({ minHoursBeforeCheckIn: 0, refundBps: 0 }),
 ]);
+export const MAX_STAY_NIGHTS = 30;
