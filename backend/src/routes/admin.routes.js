@@ -1,6 +1,9 @@
 import { Router } from 'express';
 
+import { authenticate, authorize } from '../middleware/auth.js';
+
 const router = Router();
+router.use(authenticate, authorize('admin'));
 
 // Replaced by A6 (approvals, users, dashboard).
 router.use((_req, res) => {
