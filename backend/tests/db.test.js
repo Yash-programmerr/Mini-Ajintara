@@ -22,3 +22,14 @@ it.each([
   });
   expect(disconnect).toHaveBeenCalledOnce();
 });
+
+it('uses a bounded connection timeout and logs only the connected host and database', async () => {
+  const connect = vi.spyOn(mongoose, 'connect').mockResolvedValue(mongoose);
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(mongoose, 'connection', 'get').mockReturnValue({
+    host: 'db.example', name: 'ajintara', db: { admin: () => ({ command: async () => ({ setName: 'rs0' }) }) },
+  });
+  await connectDB();
+  expect(connect).toHaveBeenCalledWith(expect.any(String), { serverSelectionTimeoutMS: 10000 });
+  expect(log.mock.calls).toEqual([['[db] connected to db.example/ajintara']]);
+});

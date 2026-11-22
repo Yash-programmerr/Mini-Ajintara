@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { frontendOrigins } from './origins.js';
 
 dotenv.config({ quiet: true });
 
@@ -10,7 +11,7 @@ const emptyToUndefined = (value) =>
 const emptyAsUnset = (schema) => z.preprocess(emptyToUndefined, schema);
 
 const envSchema = z.object({
-  PORT: emptyAsUnset(z.coerce.number().int().positive().default(5000)),
+  PORT: emptyAsUnset(z.coerce.number().int().min(1).max(65535).default(5000)),
   NODE_ENV: emptyAsUnset(z.enum(['development', 'test', 'production']).default('development')),
   MONGO_URI: emptyAsUnset(
     z.string({ error: 'MONGO_URI is required' }).min(1, 'MONGO_URI is required'),
@@ -24,12 +25,26 @@ const envSchema = z.object({
   ),
   AUTH_RATE_LIMIT_MAX: emptyAsUnset(z.coerce.number().int().positive().default(10)),
   JWT_EXPIRES_IN: emptyAsUnset(z.string().min(1).default('15m')),
-  FRONTEND_URL: emptyAsUnset(z.string().min(1).default('http://localhost:5173')),
+  FRONTEND_URL: emptyAsUnset(z.string().min(1).optional()),
   HOLD_MINUTES: emptyAsUnset(z.coerce.number().int().positive().default(10)),
   // Payment keys stay optional until A3 so the foundation can boot without them.
   RAZORPAY_KEY_ID: emptyAsUnset(z.string().optional()),
   RAZORPAY_KEY_SECRET: emptyAsUnset(z.string().optional()),
   RAZORPAY_WEBHOOK_SECRET: emptyAsUnset(z.string().optional()),
+}).transform((values, ctx) => {
+  const production = values.NODE_ENV === 'production';
+  const frontendUrl = values.FRONTEND_URL ?? 'http://localhost:5173';
+  if (production && !values.FRONTEND_URL) {
+    ctx.addIssue({ code: 'custom', path: ['FRONTEND_URL'], message: 'FRONTEND_URL is required in production' });
+    return z.NEVER;
+  }
+  try {
+    const allowedOrigins = Object.freeze(frontendOrigins(frontendUrl, production));
+    return { ...values, FRONTEND_URL: frontendUrl, allowedOrigins };
+  } catch (error) {
+    ctx.addIssue({ code: 'custom', path: ['FRONTEND_URL'], message: error.message });
+    return z.NEVER;
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -52,8 +67,4 @@ if (!parsed.success) {
 
 export const env = Object.freeze(parsed.data);
 
-export const allowedOrigins = Object.freeze(
-  env.FRONTEND_URL.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
-);
+export const allowedOrigins = env.allowedOrigins;

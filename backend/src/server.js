@@ -1,5 +1,6 @@
+import { once } from 'node:events';
 import app from './app.js';
-import { connectDB, disconnectDB } from './config/db.js';
+import { connectDB, DatabaseStartupError, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 
 import { startInventoryExtendJob } from './jobs/inventoryExtend.js';
@@ -18,9 +19,10 @@ async function start() {
   await Promise.all([User.init(), Property.init(), RoomType.init(), Inventory.init()]);
   inventoryJob = await startInventoryExtendJob();
 
-  server = app.listen(env.PORT, () => {
-    console.log(`[server] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
-  });
+  if (shuttingDown) return;
+  server = app.listen(env.PORT, '0.0.0.0');
+  await once(server, 'listening');
+  console.log(`[server] listening on 0.0.0.0:${env.PORT} (${env.NODE_ENV})`);
 }
 
 async function shutdown(signal) {
@@ -35,25 +37,30 @@ async function shutdown(signal) {
   }, 10000);
   forceExit.unref();
 
-  await inventoryJob?.stop();
-  if (server) {
-    await new Promise((resolve) => server.close(resolve));
+  try {
+    const drained = server && new Promise((resolve) => server.close(resolve));
+    await inventoryJob?.stop();
+    await drained;
+    await disconnectDB();
+    clearTimeout(forceExit);
+    console.log('[server] shutdown complete');
+    process.exit(0);
+  } catch {
+    console.error('[server] failed to close the server or database connection');
+    process.exit(1);
   }
-
-  await disconnectDB();
-  clearTimeout(forceExit);
-  console.log('[server] shutdown complete');
-  process.exit(0);
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-process.on('unhandledRejection', (reason) => {
-  console.error('[process] Unhandled promise rejection:', reason);
+process.on('unhandledRejection', () => {
+  console.error('[process] unhandled promise rejection');
 });
 
 start().catch((error) => {
-  console.error('[server] failed to start:', error);
+  if (shuttingDown) return;
+  const message = error instanceof DatabaseStartupError ? error.message : 'Check database indexes, inventory initialization and PORT.';
+  console.error(`[server] failed to start. ${message}`);
   process.exit(1);
 });
