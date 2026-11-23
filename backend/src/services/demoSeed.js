@@ -2,7 +2,7 @@ import Inventory from '../models/Inventory.js';
 import Property from '../models/Property.js';
 import RoomType from '../models/RoomType.js';
 import User from '../models/User.js';
-import { signup } from './auth.js';
+import { createAccount } from './account.js';
 import { createRoomTypeWithInventory, extendInventoryWindow, updateInventoryRange } from './inventory.js';
 import { createProperty, reviewProperty } from './property.js';
 import { withTransaction } from '../utils/transaction.js';
@@ -15,7 +15,7 @@ async function seedAccount(account, password) {
   if (!user) {
     const input = signupBody.parse({ ...account, password });
     try {
-      ({ user } = await signup(input));
+      user = await createAccount(input);
     } catch (error) {
       if (error.code !== 'EMAIL_TAKEN') throw error;
       user = await User.findOne({ email: account.email });

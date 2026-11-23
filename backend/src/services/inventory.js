@@ -1,4 +1,4 @@
-import { INVENTORY_DAYS } from '../config/booking.js';
+import { INVENTORY_DAYS } from '../config/calendar.js';
 import Inventory from '../models/Inventory.js';
 import RoomType from '../models/RoomType.js';
 import { AppError } from '../utils/AppError.js';

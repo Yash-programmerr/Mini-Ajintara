@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { BCRYPT_COST, JWT_ALGORITHM } from '../config/auth.js';
 import { env } from '../config/env.js';
 import User from '../models/User.js';
+import { createAccount } from './account.js';
 import { AppError } from '../utils/AppError.js';
 
 // Unknown emails must incur the same bcrypt work as an incorrect password.
@@ -16,15 +17,8 @@ function session(user) {
   return { token, user };
 }
 
-export async function signup({ name, email, password, role }) {
-  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
-  try {
-    const user = await User.create({ name, email, passwordHash, role });
-    return session(user);
-  } catch (error) {
-    if (error.code === 11000) throw new AppError(409, 'EMAIL_TAKEN', 'Email already in use');
-    throw error;
-  }
+export async function signup(data) {
+  return session(await createAccount(data));
 }
 
 export async function login({ email, password }) {

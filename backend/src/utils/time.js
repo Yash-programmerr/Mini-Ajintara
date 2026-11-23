@@ -1,4 +1,4 @@
-import { CHECKIN_TIME, CHECKOUT_TIME, TIMEZONE } from '../config/booking.js';
+import { CHECKIN_TIME, CHECKOUT_TIME, TIMEZONE } from '../config/calendar.js';
 
 const calendar = new Intl.DateTimeFormat('en-CA', {
   timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',

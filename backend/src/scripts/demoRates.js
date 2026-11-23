@@ -1,4 +1,4 @@
-import { INVENTORY_DAYS } from '../config/booking.js';
+import { INVENTORY_DAYS } from '../config/calendar.js';
 import { addDays, todayIST } from '../utils/time.js';
 
 function wholeRupeeRate(basePaise, percent) {

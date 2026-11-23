@@ -1,9 +1,6 @@
 import { env } from './env.js';
 
-export const TIMEZONE = 'Asia/Kolkata';
-export const INVENTORY_DAYS = 365;
-export const CHECKIN_TIME = '14:00';
-export const CHECKOUT_TIME = '12:00';
+export { TIMEZONE, INVENTORY_DAYS, CHECKIN_TIME, CHECKOUT_TIME } from './calendar.js';
 export const HOLD_MINUTES = env.HOLD_MINUTES;
 
 // Refund tiers are ordered from most to least generous. A tier applies when the
