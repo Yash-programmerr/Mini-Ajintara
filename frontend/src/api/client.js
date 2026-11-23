@@ -9,6 +9,8 @@ export function apiBaseURL(value, production) {
   if (!url && production) {
     throw new Error('VITE_API_URL is required. Set the backend URL including /api and redeploy the frontend.');
   }
+  // Hosting dashboards commonly supply just the service origin.
+  if (url && /^https?:\/\/[^/?#]+\/?$/i.test(url)) return new URL('/api', url).href;
   return url || '/api';
 }
 

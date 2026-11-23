@@ -17,6 +17,8 @@ afterEach(() => {
 it('requires the API URL in production and keeps the local fallback', () => {
   expect(() => apiBaseURL(' ', true)).toThrow(/VITE_API_URL.*\/api/);
   expect(apiBaseURL(undefined, false)).toBe('/api');
+  expect(apiBaseURL('https://ajintara-api.onrender.com', true)).toBe('https://ajintara-api.onrender.com/api');
+  expect(apiBaseURL('https://example.test/', true)).toBe('https://example.test/api');
   expect(apiBaseURL(' https://example.test/api ', true)).toBe('https://example.test/api');
 });
 
