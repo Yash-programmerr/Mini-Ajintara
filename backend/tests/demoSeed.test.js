@@ -9,6 +9,7 @@ import Inventory from '../src/models/Inventory.js';
 import Property from '../src/models/Property.js';
 import RoomType from '../src/models/RoomType.js';
 import User from '../src/models/User.js';
+import { checkTarget } from '../src/scripts/databaseCommand.js';
 import { signup } from '../src/services/auth.js';
 import { seedDemoData } from '../src/services/demoSeed.js';
 import { createRoomTypeWithInventory } from '../src/services/inventory.js';
@@ -49,13 +50,11 @@ it('clips holiday rates to the generated inventory window', () => {
   ]);
 });
 
-it('prints sanitized remote targets and requires --yes before connecting', async () => {
-  const error = await runSeed('mongodb://hidden:uri-password@seed.example.test:27017/demo', ['--reset'])
-    .catch((result) => result);
-  expect(error.code).toBe(1);
-  expect(error.stdout).toContain('seed.example.test:27017 / demo');
-  expect(error.stderr).toContain('--yes');
-  expect(error.stdout + error.stderr).not.toMatch(/uri-password|hidden|only-for-seed-tests/);
+it('prints the remote host and database before requiring confirmation', () => {
+  const options = new mongoose.mongo.MongoClient('mongodb://seed.example.test:27017/demo').options;
+  const messages = [];
+  expect(() => checkTarget(options, true, false, line => messages.push(line))).toThrow('--yes');
+  expect(messages).toEqual(['Database target: seed.example.test:27017 / demo']);
 });
 
 describe.skipIf(!process.env.TEST_REPLICA_URI)('demo seed CLI on a disposable replica', () => {

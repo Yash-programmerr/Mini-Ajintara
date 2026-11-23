@@ -6,11 +6,12 @@ export function redact(text, env = process.env) {
     secrets.push(password);
     try { secrets.push(decodeURIComponent(password)); } catch { /* A malformed URI may still reach diagnostics. */ }
   }
-  let safe = String(text);
+  let safe = env.MONGO_URI ? String(text).replaceAll(env.MONGO_URI, '***') : String(text);
+  safe = safe.replace(/(mongodb(?:\+srv)?:\/\/)[^/\s@]+@/gi, '$1***@');
   for (const secret of secrets.filter(Boolean).sort((a, b) => b.length - a.length)) {
     safe = safe.replaceAll(secret, '***');
   }
-  return safe.replace(/(mongodb(?:\+srv)?:\/\/)[^/\s@]+@/gi, '$1***@');
+  return safe;
 }
 
 export function formatScriptError(error, env = process.env) {
