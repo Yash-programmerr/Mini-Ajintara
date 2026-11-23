@@ -58,7 +58,7 @@ export default function PropertyForm() {
   const { id } = useParams();
   const { user } = useAuth();
   const query = useQuery({
-    queryKey: propertyKey(user.id, id), queryFn: () => getProperty(id), enabled: Boolean(id),
+    queryKey: propertyKey(user.id, id), queryFn: ({ signal }) => getProperty(id, signal), enabled: Boolean(id),
   });
   if (id && query.isPending) return <Spinner />;
   if (id && query.isError) return <ApiError error={query.error} />;

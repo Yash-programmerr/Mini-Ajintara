@@ -7,12 +7,12 @@ export const partnerKeys = (userId) => ['partner', userId];
 export const propertyKey = (userId, id) => [...partnerKeys(userId), 'properties', id];
 export const inventoryKey = (userId, id) => [...partnerKeys(userId), 'inventory', id];
 
-export async function getProperties() {
-  return (await client.get(properties)).data.properties;
+export async function getProperties(signal) {
+  return (await client.get(properties, { signal })).data.properties;
 }
 
-export async function getProperty(id) {
-  return (await client.get(properties + '/' + id)).data.property;
+export async function getProperty(id, signal) {
+  return (await client.get(properties + '/' + id, { signal })).data.property;
 }
 
 export async function saveProperty(id, fields) {
@@ -28,8 +28,8 @@ export async function editRoomType(id, fields) {
   return (await client.patch(roomUrl(id), fields)).data.roomType;
 }
 
-export async function getInventory(id, from, to) {
-  return (await client.get(roomUrl(id) + '/inventory', { params: { from, to } })).data.inventory;
+export async function getInventory(id, from, to, signal) {
+  return (await client.get(roomUrl(id) + '/inventory', { params: { from, to }, signal })).data.inventory;
 }
 
 export async function updateInventory(id, fields) {

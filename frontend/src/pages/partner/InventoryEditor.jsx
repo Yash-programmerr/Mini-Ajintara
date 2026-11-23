@@ -47,7 +47,7 @@ export default function InventoryEditor({ rooms }) {
   const room = rooms.find((r) => r.id === roomId) || rooms[0];
   const query = useQuery({
     queryKey: [...inventoryKey(user.id, room?.id), month.from, month.to],
-    queryFn: () => getInventory(room.id, month.from, month.to), enabled: Boolean(room),
+    queryFn: ({ signal }) => getInventory(room.id, month.from, month.to, signal), enabled: Boolean(room),
   });
   return <section className="panel space-y-5">
     <h2 className="section-title">Nightly inventory</h2>

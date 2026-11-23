@@ -14,7 +14,7 @@ export default function AdminDashboard() {
   const limit = 10;
   const query = useQuery({
     queryKey: [...adminKeys(user.id), 'pending', page, limit],
-    queryFn: () => getPendingProperties(page, limit),
+    queryFn: ({ signal }) => getPendingProperties(page, limit, signal),
   });
   const queue = query.data;
   return <div className="space-y-6">

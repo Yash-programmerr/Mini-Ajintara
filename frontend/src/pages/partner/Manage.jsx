@@ -15,7 +15,7 @@ export default function Manage() {
   const { id } = useParams();
   const { user } = useAuth();
   const [editing, setEditing] = useState(null);
-  const query = useQuery({ queryKey: propertyKey(user.id, id), queryFn: () => getProperty(id) });
+  const query = useQuery({ queryKey: propertyKey(user.id, id), queryFn: ({ signal }) => getProperty(id, signal) });
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ApiError error={query.error} />;
   const property = query.data;

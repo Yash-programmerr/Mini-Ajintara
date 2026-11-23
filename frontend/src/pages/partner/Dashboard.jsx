@@ -9,7 +9,7 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const query = useQuery({ queryKey: [...partnerKeys(user.id), 'properties'], queryFn: getProperties });
+  const query = useQuery({ queryKey: [...partnerKeys(user.id), 'properties'], queryFn: ({ signal }) => getProperties(signal) });
   return <div className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="page-title">My properties</h1>

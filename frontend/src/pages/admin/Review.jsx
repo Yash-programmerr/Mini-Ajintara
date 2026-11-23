@@ -52,7 +52,7 @@ export default function Review() {
   const [rejecting, setRejecting] = useState(false);
   const client = useQueryClient();
   const keys = adminKeys(user.id);
-  const query = useQuery({ queryKey: [...keys, id], queryFn: () => getPropertyForReview(id) });
+  const query = useQuery({ queryKey: [...keys, id], queryFn: ({ signal }) => getPropertyForReview(id, signal) });
   const review = useMutation({
     mutationFn: (decision) => reviewProperty(id, decision),
     onSuccess: async (result) => {

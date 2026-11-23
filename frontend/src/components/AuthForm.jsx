@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import { apiErrorMessage } from '../api/client.js';
 import { useAuth } from '../hooks/useAuth.js';
 import Button from './ui/Button.jsx';
 import ErrorMessage from './ui/ErrorMessage.jsx';
@@ -33,7 +34,7 @@ export default function AuthForm({ creating = false }) {
       const home = { guest: '/', partner: '/partner', admin: '/admin' }[user.role];
       navigate(state?.from || home, { replace: true });
     } catch (error) {
-      setError('root', { message: error.response?.data?.error?.message || 'Unable to connect. Please try again.' });
+      setError('root', { message: apiErrorMessage(error) });
     }
   }
 
