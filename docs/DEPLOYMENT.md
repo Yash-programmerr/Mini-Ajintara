@@ -25,13 +25,33 @@ Use one Atlas replica set, one Render web service and one Vercel project. The re
 3. Deploy, then copy the stable Vercel production origin. Update `FRONTEND_URL` in Render to match exactly, for example `https://<project>.vercel.app`. Save and redeploy the API with the new environment. Changes to `VITE_API_URL` require a new Vercel build.
 4. Visit `/login` directly and reload it. It should render the login page. Visiting `/partner` while logged out should take you to login. Vercel serves the built assets and rewrites SPA routes to the entry point.
 
-## 4. Seed the production database once
+## 4. Seeding the production database
 
-1. On a trusted workstation, use Node 20.19+ and open the `backend` directory in the checked-out repository. Run `npm ci --omit=dev`. The seed commands use the production dependencies.
-2. Supply the production `MONGO_URI`, `JWT_SECRET`, `NODE_ENV=production` and `FRONTEND_URL` to that local process using a private shell environment or an untracked `backend/.env`. Set a strong `SEED_PASSWORD` **before** creating the demo accounts. Keep it for the smoke test.
-3. Run `npm run seed:data -- --yes`. The `--yes` flag authorizes the remote target. Verify the database host and name, then the summary of 14 properties (11 approved, 2 pending and 1 rejected). Running the command again preserves existing seed account passwords.
-4. For admin access, set `ADMIN_NAME`, `ADMIN_EMAIL` and a separate strong `ADMIN_PASSWORD` in the same private environment. Choose an unused email and run `npm run seed:admin`. Existing accounts keep their current role.
-5. Sign in on the Vercel site as `partner1@ajintara.test` and open a property. Verify a month of nightly inventory loads. Clear production credentials from the local seed environment when finished.
+Use PowerShell 7.1 or newer on Windows. Install dependencies in `backend` with `npm ci --omit=dev`. Enter the URI and passwords at the masked prompts. Both seeds print the target host and database and require `--yes` for a remote target. Existing accounts keep their passwords and roles. Choose an unused email when provisioning a new administrator.
+
+```powershell
+Set-Location 'E:\Mini Ajintra\backend'
+$env:MONGO_URI = Read-Host 'Atlas connection string including database name' -MaskInput
+$env:ADMIN_NAME = Read-Host 'Admin name'
+$env:ADMIN_EMAIL = Read-Host 'Admin email'
+$env:ADMIN_PASSWORD = Read-Host 'Admin password' -MaskInput
+$env:SEED_PASSWORD = Read-Host 'Demo account password' -MaskInput
+$env:DNS_SERVERS = '8.8.8.8,1.1.1.1'
+
+npm.cmd run db:check
+if ($LASTEXITCODE -ne 0) { throw 'Database check failed' }
+npm.cmd run seed:admin -- --yes
+if ($LASTEXITCODE -ne 0) { throw 'Admin seed failed' }
+npm.cmd run seed:data -- --yes
+if ($LASTEXITCODE -ne 0) { throw 'Demo seed failed' }
+npm.cmd run db:check
+```
+
+The read-only check reports the topology and four collection counts. Close the shell when finished. Set `$env:DEBUG_SEED = '1'` to include a redacted stack trace with an error.
+
+**Windows DNS troubleshooting.** A `querySrv ECONNREFUSED` error means the resolver refused the SRV lookup before authentication. The optional `DNS_SERVERS` setting above selects resolvers for the CLI process only. Omit it when system DNS works. If the network blocks outbound DNS, try a phone hotspot and ensure Atlas permits its public IP.
+
+Alternatively, in Atlas open **Connect → Drivers** and turn off **SRV Connection String**. In older dialogs, selecting an older driver version can display the standard format. Copy the full `mongodb://` string with its member hosts, TLS and replica-set options, and specify your database name. Keep the installed driver version. This format bypasses SRV discovery and still needs ordinary host resolution. [Atlas connection troubleshooting](https://www.mongodb.com/docs/atlas/troubleshoot-connection/)
 
 ## 5. Run the live smoke test
 
@@ -54,5 +74,5 @@ If the CORS step fails, compare the exact Vercel origin with Render’s allow-li
 ## 6. Rotate the JWT signing key
 
 1. Generate a new random key of at least 32 characters and save it in your password manager.
-2. Change `JWT_SECRET` under the Render service’s **Environment** settings, save and redeploy. Update any private seed environment holding the old key.
+2. Change `JWT_SECRET` under the Render service’s **Environment** settings, save and redeploy.
 3. After the new process is serving, tokens signed with the previous key receive HTTP 401. Users sign in again to replace the token stored in localStorage. Run the smoke test with the existing demo password to verify fresh logins.

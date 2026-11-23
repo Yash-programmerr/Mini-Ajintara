@@ -65,9 +65,9 @@ Vercel serves the React SPA. The browser sends authenticated HTTPS requests to E
 | Name | Where to set it | Example or purpose | Secret? |
 | --- | --- | --- | --- |
 | `MONGO_URI` | Render and local seed environment | `mongodb+srv://<user>:<encoded-password>@<cluster>/ajintara` | Yes |
-| `JWT_SECRET` | Render and seed environment | Random signing key, at least 32 characters | Yes |
+| `JWT_SECRET` | Render | Random signing key, at least 32 characters | Yes |
 | `JWT_EXPIRES_IN` | Render blueprint | `1d` (local default `15m`) | No |
-| `FRONTEND_URL` | Render and production seed environment | `https://<project>.vercel.app`, comma-separated for multiple exact origins | No |
+| `FRONTEND_URL` | Render | `https://<project>.vercel.app`, comma-separated for multiple exact origins | No |
 | `NODE_ENV`, `NODE_VERSION` | Render blueprint | `production`, `20` | No |
 | `PORT` | Render supplies it | Local default `5000` | No |
 | `HOLD_MINUTES`, `AUTH_RATE_LIMIT_MAX` | Render blueprint | `10`, `10` attempts per IP per 15 minutes for signup/login | No |
@@ -99,7 +99,7 @@ next request. Tokens expire after 15 minutes by default.
 
 Public signup accepts guests and hotel partners. To provision an admin, set
 `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the backend environment
-and run `npm run seed:admin` from `backend`. Reusing an email preserves the
+and run `npm run seed:admin` from `backend` (append `-- --yes` for Atlas). Reusing an email preserves the
 existing account, including its role and password.
 
 ### Known limitations
