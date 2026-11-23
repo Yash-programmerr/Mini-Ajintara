@@ -1,6 +1,6 @@
 function parseOrigin(value) {
   // WHATWG URL normalizes paths, credentials and backslashes that are invalid
-  // in an Origin header. Reject them before canonicalizing the host and port.
+  // in an Origin header. Reject them before parsing the host and port.
   if (!/^https?:\/\/[^\s/@?#*\\]+$/i.test(value)) return null;
   try {
     return new URL(value);
@@ -16,12 +16,13 @@ function isLoopback(hostname) {
 }
 
 export function frontendOrigins(value, production) {
-  const urls = value.split(',').map((entry) => parseOrigin(entry.trim()));
+  const origins = value.split(',').map((entry) => entry.trim());
+  const urls = origins.map(parseOrigin);
   if (urls.some((url) => !url)) {
     throw new Error('Enter comma-separated HTTP(S) origins without paths, trailing slashes, credentials or wildcards');
   }
   if (production && urls.some((url) => url.protocol !== 'https:' || isLoopback(url.hostname))) {
     throw new Error('Production requires HTTPS origins outside localhost and loopback addresses');
   }
-  return [...new Set(urls.map((url) => url.origin))];
+  return [...new Set(origins)];
 }

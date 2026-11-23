@@ -19,9 +19,9 @@ function boot(overrides) {
   return stdout + stderr;
 }
 
-it('canonicalizes explicit production origins to match browser Origin headers', () => {
+it('preserves configured origin strings for exact CORS checks', () => {
   expect(frontendOrigins('https://Demo.Example:443, https://partners.example:8443', true))
-    .toEqual(['https://demo.example', 'https://partners.example:8443']);
+    .toEqual(['https://Demo.Example:443', 'https://partners.example:8443']);
   expect(frontendOrigins('http://localhost:5173', false)).toEqual(['http://localhost:5173']);
 });
 

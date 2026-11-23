@@ -63,7 +63,7 @@ export function errorHandler(error, req, res, _next) {
   const appError = toAppError(error);
 
   if (appError.status >= 500) {
-    console.error(`[error] ${req.method} ${req.originalUrl}`, error);
+    console.error(`[error] ${req.method} ${req.route?.path ?? '-'} ${appError.status} ${appError.code}`);
   }
 
   const payload = { code: appError.code, message: appError.message };

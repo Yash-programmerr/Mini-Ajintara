@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
+import mongoose from 'mongoose';
 import morgan from 'morgan';
 import { allowedOrigins, env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -20,8 +21,17 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 app.use(helmet());
-app.use(cors({ origin: allowedOrigins }));
-if (env.NODE_ENV === 'development') app.use(morgan('dev'));
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+}));
+if (env.NODE_ENV === 'development') {
+  // Route templates keep query values and user-supplied path parameters out of logs.
+  morgan.token('route-template', (req) => req.route?.path);
+  app.use(morgan(':method :route-template :status :response-time ms'));
+}
 app.use(generalLimiter);
 
 // Razorpay signs the exact request bytes. Keep this before express.json() so a
@@ -31,7 +41,10 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), paym
 app.use(express.json({ limit: '10kb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  res.json({
+    status: 'ok', time: new Date().toISOString(), uptimeSeconds: Math.floor(process.uptime()),
+    db: mongoose.STATES[mongoose.connection.readyState] ?? 'unknown',
+  });
 });
 
 app.use('/api/auth', authRouter);
