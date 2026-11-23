@@ -14,6 +14,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "db:check": "node src/scripts/dbCheck.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:data": "node src/scripts/seedData.js"
   },
