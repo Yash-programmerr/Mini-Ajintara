@@ -30,7 +30,9 @@ async function step(number, label, fn) {
 
 async function smoke() {
   const api = readUrl('API_URL');
-  const origin = readUrl('FRONTEND_URL').origin;
+  const origin = process.env.FRONTEND_URL;
+  readUrl('FRONTEND_URL');
+  check(/^https?:\/\/[^\s/@?#*\\]+$/i.test(origin), 'Set FRONTEND_URL to one exact origin without a trailing slash.');
   const password = process.env.SMOKE_PASSWORD;
   check(password, 'Set SMOKE_PASSWORD to the existing demo accounts’ password.');
   const path = api.pathname.replace(/\/+$/, '');
@@ -89,12 +91,18 @@ async function smoke() {
   await step(4, 'CORS distinguishes the frontend and an unlisted origin', async () => {
     const preflight = (origin) => request('auth/login', {
       method: 'OPTIONS', headers: {
-        Origin: origin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type',
+        Origin: origin, 'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'authorization, content-type',
       },
     });
     const allowed = await preflight(origin);
     check(allowed.status >= 200 && allowed.status < 300 && allowed.headers.get('access-control-allow-origin') === origin,
       'The frontend preflight must succeed and return its exact origin.');
+    const list = (header) => (allowed.headers.get(header) ?? '').toLowerCase().split(',').map((s) => s.trim());
+    check(list('access-control-allow-headers').includes('authorization'), 'Preflight must allow Authorization.');
+    const methods = list('access-control-allow-methods');
+    check(['get', 'post', 'put', 'patch', 'delete'].every((method) => methods.includes(method)),
+      'Preflight is missing a required method.');
     const blocked = await preflight('https://evil.example');
     check(!blocked.headers.has('access-control-allow-origin'), 'The unlisted origin received an allowance.');
   });

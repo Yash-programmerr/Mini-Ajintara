@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "smoke": "node scripts/smoke.js",
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
