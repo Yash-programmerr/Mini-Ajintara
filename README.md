@@ -1,6 +1,6 @@
 # Mini Ajintara
 
-> **Video walkthrough:** TODO — add link
+> **Live frontend** `<VERCEL_PRODUCTION_URL>` · **Live API** `<RENDER_SERVICE_URL>/api` · **Video walkthrough** `<VIDEO_URL>`
 
 An online hotel listing and booking platform for India with three roles: guest,
 partner (hotel owner), and admin. Partners can submit listings, configure rooms and edit nightly inventory. Admins can review those listings.
@@ -58,32 +58,36 @@ cd backend && npm run lint && npm test
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-## Environment variables
+## Deployment
 
-### Backend
+Vercel serves the React SPA. The browser sends authenticated HTTPS requests to Express on Render, which stores data in a MongoDB Atlas replica set. Set up Atlas first, create the Render service from `render.yaml`, then build Vercel with the assigned API URL. Confirm the final Vercel origin in Render, seed the database and run the smoke test. Follow the [deployment runbook](docs/DEPLOYMENT.md).
 
-| Variable                   | Required | Notes                                                |
-| -------------------------- | -------- | ---------------------------------------------------- |
-| `PORT`                     | no       | Defaults to `5000`.                                  |
-| `NODE_ENV`                 | no       | `development`, `test`, or `production`.              |
-| `MONGO_URI`                | yes      | Atlas replica-set connection string.                 |
-| `JWT_SECRET`               | yes      | At least 32 characters; no default.                  |
-| `JWT_EXPIRES_IN`           | no       | Defaults to `15m`.                                    |
-| `AUTH_RATE_LIMIT_MAX`      | no       | Signup and login share 10 attempts per IP per 15 minutes by default. |
-| `FRONTEND_URL`             | no       | Comma-separated CORS origins.                        |
-| `SEED_PASSWORD`            | no       | Overrides the demo password when creating seed accounts. |
-| `HOLD_MINUTES`             | no       | Defaults to `10`.                                    |
-| `RAZORPAY_KEY_ID`          | no       | Required before A3 payment work.                     |
-| `RAZORPAY_KEY_SECRET`      | no       | Required before A3 payment work.                     |
-| `RAZORPAY_WEBHOOK_SECRET`  | no       | Required before A3 webhook verification.             |
+| Name | Where to set it | Example or purpose | Secret? |
+| --- | --- | --- | --- |
+| `MONGO_URI` | Render and local seed environment | `mongodb+srv://<user>:<encoded-password>@<cluster>/ajintara` | Yes |
+| `JWT_SECRET` | Render and seed environment | Random signing key, at least 32 characters | Yes |
+| `JWT_EXPIRES_IN` | Render blueprint | `1d` (local default `15m`) | No |
+| `FRONTEND_URL` | Render and production seed environment | `https://<project>.vercel.app`, comma-separated for multiple exact origins | No |
+| `NODE_ENV`, `NODE_VERSION` | Render blueprint | `production`, `20` | No |
+| `PORT` | Render supplies it | Local default `5000` | No |
+| `HOLD_MINUTES`, `AUTH_RATE_LIMIT_MAX` | Render blueprint | `10`, `10` attempts per IP per 15 minutes for signup/login | No |
+| `RAZORPAY_KEY_ID` | Render | Optional payment key identifier, reserved for A3 | No |
+| `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Render | Optional private payment credentials, reserved for A3 | Yes |
+| `VITE_API_URL` | Vercel → Environment Variables → Production | `https://<service>.onrender.com/api` | No |
+| `VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET` | Vercel, optional | Cloud name and unsigned image upload preset | No |
+| `VITE_RAZORPAY_KEY_ID` | Vercel, optional | Public payment key identifier, reserved for A3 | No |
+| `SEED_PASSWORD`, `ADMIN_PASSWORD` | Local seed environment | Unique demo-account and administrator passwords | Yes |
+| `ADMIN_NAME`, `ADMIN_EMAIL` | Local admin seed environment | Admin display name and email | No |
+| `API_URL`, `FRONTEND_URL` | Local smoke environment | Render API URL and **one** allowed Vercel origin | No |
+| `SMOKE_PASSWORD` | Local smoke environment | Existing demo accounts’ password | Yes |
 
-### Frontend
+Vite embeds `VITE_*` values at build time and exposes them to the browser. Redeploy Vercel after changing them. The backend validates its environment at startup. Keep private values in host settings or an untracked local environment file.
 
-Set `VITE_API_URL` to the backend API. Set both `VITE_CLOUDINARY_CLOUD_NAME` and
-`VITE_CLOUDINARY_UPLOAD_PRESET` to enable unsigned photo uploads. Partners can also
-paste HTTPS image URLs. `VITE_RAZORPAY_KEY_ID` is reserved for payment work.
+**Free-tier limitations.** Render sleeps after about 15 minutes of inactivity. The next request can take around a minute. In-process cron jobs pause while the service sleeps, and inventory extension catches up at startup. [Render free services](https://render.com/docs/free)
 
-Never commit `.env` files.
+This demo’s Atlas network policy allows `0.0.0.0/0`. The Render service uses shared regional outbound IPs and can use different addresses. Use a strong database password and a database-scoped account. You can narrow the Atlas access list to the CIDRs in Render’s **Connect → Outbound** panel plus the seed operator’s IP. [Render outbound IP ranges](https://render.com/docs/outbound-ip-addresses) · [Atlas IP access lists](https://www.mongodb.com/docs/atlas/security/ip-access-list/)
+
+The browser stores bearer tokens in localStorage. Injected JavaScript can read a token until it expires or the signing key rotates.
 
 ## Authentication
 
@@ -106,8 +110,7 @@ Short expiry limits that window. Logout clears the browser's copy.
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the Mermaid diagram
-(React -> Express -> MongoDB Atlas, Razorpay webhook, and hold-expiry cron).
+The [architecture diagram](docs/ARCHITECTURE.md) shows the three hosts, browser requests and inventory job.
 
 ## Database design
 

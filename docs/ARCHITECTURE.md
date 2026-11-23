@@ -2,38 +2,22 @@
 
 ```mermaid
 flowchart LR
-  Browser["Guest / Partner / Admin<br/>browser"] --> FE["React SPA<br/>Vite + Tailwind v4"]
-  FE -->|"HTTPS /api (JSON)"| BE["Express 5 API<br/>Node.js 20+"]
-  BE -->|"Mongoose"| DB[("MongoDB Atlas<br/>replica set")]
-  BE -->|"create order / refund"| RZ["Razorpay<br/>(test mode)"]
-  RZ -->|"webhook (raw body)"| BE
-  CRON["node-cron<br/>hold expiry (10 min)"] -->|"expires holds"| BE
+    Browser["Guest, partner or admin browser"]
+    Vercel["Vercel CDN<br/>Vite build in frontend/dist"]
+    subgraph Render["Render · Singapore · free web service"]
+        API["Express API<br/>0.0.0.0 on assigned PORT"]
+        Cron["Inventory extension<br/>startup and 00:05 Asia/Kolkata"]
+    end
+    Atlas[("MongoDB Atlas<br/>replica set")]
+    Browser -->|"HTTPS · page and assets"| Vercel
+    Browser -->|"HTTPS /api · Authorization: Bearer"| API
+    API -->|"Mongoose · transactional writes"| Atlas
+    Cron -->|"Append missing inventory nights"| Atlas
 ```
 
-## Request path
+1. Vercel serves the SPA entry point for client-side routes such as `/partner`. Vite embeds the Render API URL when it builds the bundle.
+2. The browser contacts Render directly. CORS accepts exact configured frontend origins. Express trusts one proxy hop for client IP rate limiting. Authentication verifies the token and loads the user’s current role from MongoDB.
+3. Routes validate input and delegate through thin controllers to services. Inventory changes use conditional writes inside a MongoDB transaction.
+4. The API verifies the database topology, initializes indexes and extends inventory before listening. Health checks read Mongoose’s connection state from memory. Render’s shutdown signal lets the API drain requests and close its database connection.
 
-1. The SPA calls the Express API with a JWT in the `Authorization` header.
-2. Express validates input, then a thin controller delegates to a service.
-3. Services own all business rules and use Mongoose models.
-4. Multi-document writes (inventory + booking) run in a MongoDB transaction, so
-   the target database must be a replica set.
-
-## Payment path
-
-1. The backend creates a Razorpay order for a held booking.
-2. The browser completes checkout with Razorpay.
-3. Razorpay calls the webhook. The raw request body is preserved for signature
-   verification before the JSON parser runs.
-4. Payment and booking state changes are idempotent and conditional.
-
-## Background path
-
-`jobs/holdExpiry.js` runs on a schedule. It expires `pending_payment` bookings
-whose `holdExpiresAt` has passed and releases their inventory atomically.
-
-## Trust boundaries
-
-- The token proves identity only. Roles and ownership are re-read from the
-  database.
-- Payment success is trusted only after webhook signature verification.
-- The public signup route can only create guests.
+Guest booking, Razorpay order/refund handling, webhook verification and hold expiry are planned. Public signup currently supports guests and partners. Administrators are provisioned through the seed script.
